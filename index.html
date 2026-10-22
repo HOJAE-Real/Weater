@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HJ Weather AI agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#12324A;--muted:#5B7285;--line:#D3DEE6;--hot:#D9482F;--cold:#2B78BD;--rain:#2E9488;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);overflow-x:hidden;position:relative;
+  font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  background:linear-gradient(#3A82D6 0%,#7DB8EC 45%,#BEE4FA 100%) fixed}
+.sun{position:absolute;top:calc(28px + env(safe-area-inset-top,0px));right:8%;width:86px;height:86px;border-radius:50%;
+  background:#FFC93C;box-shadow:0 0 0 20px rgba(255,231,163,.7),0 0 0 44px rgba(158,208,245,.45)}
+.cloud{position:absolute;background:#fff;border-radius:60px;height:42px;opacity:.95}
+.cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.cloud::before{width:54px;height:54px;top:-27px;left:18px}
+.cloud::after{width:70px;height:70px;top:-36px;right:16px}
+.c1{width:150px;top:118px;left:50%}.c2{width:110px;top:52px;left:6%}
+.c3{width:170px;bottom:36px;left:6%;position:fixed}.c4{width:120px;bottom:70px;right:5%;position:fixed}
+main{position:relative;z-index:1;max-width:480px;margin:0 auto;
+  padding:calc(170px + env(safe-area-inset-top,0px)) 16px calc(150px + env(safe-area-inset-bottom,0px))}
+h1{color:#fff;font-size:2rem;line-height:1.15;margin:0 0 18px;text-shadow:0 2px 8px rgba(0,0,0,.15)}
+.card{background:var(--card);border-radius:18px;padding:20px;box-shadow:0 10px 28px rgba(18,50,74,.18)}
+.meta{color:var(--muted);margin:0 0 14px;font-size:.9rem}
+label{display:block;color:var(--muted);font-size:.85rem;margin:0 0 6px}
+input{width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:#F2F6F9;
+  border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.btns{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin:12px 0 4px}
+button{font:inherit;font-weight:500;border-radius:10px;padding:11px 8px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink)}
+button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+button:disabled{opacity:.4;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--cold);outline-offset:2px}
+.msg{min-height:1.3em;font-size:.88rem;color:var(--muted);margin:8px 0 0}
+.msg.err{color:var(--hot)}
+.result{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}
+.date{font-weight:700;font-size:1.15rem;margin:0 0 12px}
+dl{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0}
+dt{color:var(--muted);font-size:.85rem}dd{margin:2px 0 0;font-size:1.6rem;font-weight:700}
+.hot{color:var(--hot)}.cold{color:var(--cold)}.rain{color:var(--rain)}
+.mail{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:18px}
+.foot{color:var(--muted);font-size:.78rem;margin:14px 0 0}
+</style>
+</head>
+<body>
+<div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div>
+<div class="cloud c3"></div><div class="cloud c4"></div>
+<main>
+  <h1>HJ Weather AI agent</h1>
+  <section class="card">
+    <p class="meta">청주(유) 지점, 기온/강수량</p>
+    <label for="date">날짜 (눌러서 달력에서 선택)</label>
+    <input type="date" id="date">
+    <div class="btns">
+      <button class="primary" id="go">조회하기</button>
+      <button id="yday">Yesterday</button>
+      <button id="today">Today</button>
+    </div>
+    <p class="msg" id="msg">데이터를 불러오는 중…</p>
+
+    <div class="result" id="result" hidden>
+      <p class="date" id="rdate"></p>
+      <dl>
+        <div><dt>평균기온</dt><dd id="avg"></dd></div>
+        <div><dt>최고기온</dt><dd class="hot" id="max"></dd></div>
+        <div><dt>최저기온</dt><dd class="cold" id="min"></dd></div>
+        <div><dt>일강수량</dt><dd class="rain" id="rain"></dd></div>
+      </dl>
+    </div>
+
+    <label for="to" style="margin-top:18px">받는 사람</label>
+    <div class="mail" style="margin-top:0">
+      <input id="to" type="email" value="hojae1@sk.com">
+      <button id="mail" disabled>메일 보내기</button>
+    </div>
+    <p class="foot" id="foot">출처: 기상청 ASOS 일자료</p>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let DATA = null, current = null;
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+const fmt = (v, u) => v == null ? "–" : v.toFixed(1) + u;
+
+function msg(t, err){ $("msg").textContent = t; $("msg").className = "msg" + (err ? " err" : ""); }
+
+$("date").value = daysAgo(0);
+$("date").max = daysAgo(0);
+
+fetch("data.json?v=" + Date.now())
+  .then(r => { if (!r.ok) throw 0; return r.json(); })
+  .then(j => {
+    DATA = j.days || {};
+    const keys = Object.keys(DATA);
+    if (keys.length) $("date").min = keys[0];
+    msg(keys.length ? `${keys[0]}부터 ${keys[keys.length-1]}까지 조회할 수 있어요.` : "아직 저장된 데이터가 없어요.");
+    if (j.updated) $("foot").textContent = `출처: 기상청 ASOS 일자료 | 데이터 갱신 ${j.updated.replace("T"," ").replace("Z"," UTC")}`;
+  })
+  .catch(() => msg("데이터를 불러오지 못했어요. 잠시 후 새로고침해 주세요.", true));
+
+function lookup(){
+  if (!DATA) return;
+  const d = $("date").value;
+  const v = DATA[d];
+  if (!v){
+    current = null; $("result").hidden = true; $("mail").disabled = true;
+    msg(d === daysAgo(0) ? "오늘 자료는 다음 날 낮 12시쯤 올라와요. Yesterday로 조회해 보세요." : `${d} 자료가 없어요.`, true);
+    return;
+  }
+  current = { d, ...v };
+  const [y, m, dd] = d.split("-");
+  $("rdate").textContent = `${y}년 ${+m}월 ${+dd}일`;
+  $("avg").textContent = fmt(v.avg, "℃");
+  $("max").textContent = fmt(v.max, "℃");
+  $("min").textContent = fmt(v.min, "℃");
+  $("rain").textContent = v.rain == null ? "0.0mm" : v.rain.toFixed(1) + "mm";
+  $("result").hidden = false; $("mail").disabled = false;
+  msg("");
+}
+
+$("go").onclick = lookup;
+$("yday").onclick = () => { $("date").value = daysAgo(1); };
+$("today").onclick = () => { $("date").value = daysAgo(0); };
+$("mail").onclick = () => {
+  if (!current) return;
+  const subj = `[날씨] 청주 ${current.d} 기온·강수량`;
+  const body = [`지점: 청주(유)`, `날짜: ${current.d}`, "",
+    `평균기온: ${fmt(current.avg,"℃")}`, `최고기온: ${fmt(current.max,"℃")}`,
+    `최저기온: ${fmt(current.min,"℃")}`, `일강수량: ${current.rain == null ? "0.0mm" : current.rain.toFixed(1)+"mm"}`,
+    "", "출처: 기상청 ASOS 일자료", location.href].join("\n");
+  location.href = `mailto:${encodeURIComponent($("to").value.trim())}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+};
+</script>
+</body>
+</html>
