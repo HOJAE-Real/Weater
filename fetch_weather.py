@@ -8,7 +8,7 @@ import urllib.parse
 STN_CODE = "131"
 START = datetime.date(2020, 1, 1)
 DATA_FILE = "data.json"
-API_URL = "https://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
+API_URL = "http://apis.data.go.kr/1360000/AsosDalyInfoService/getWthrDataList"
 
 KEY = os.environ["SERVICE_KEY"].strip()
 KEY = KEY if "%" in KEY else urllib.parse.quote(KEY, safe="")
@@ -30,7 +30,7 @@ def fetch_range(start, end):
     })
     req = urllib.request.Request(f"{API_URL}?serviceKey={KEY}&{q}",
                                  headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as res:
+    with urllib.request.urlopen(req, timeout=90) as res:
         data = json.loads(res.read().decode("utf-8"))
     header = data["response"]["header"]
     if header["resultCode"] == "03":
