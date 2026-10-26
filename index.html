@@ -28,7 +28,7 @@ h1{color:#fff;font-size:2rem;line-height:1.15;margin:0 0 18px;text-shadow:0 2px 
 label{display:block;color:var(--muted);font-size:.85rem;margin:0 0 6px}
 input{width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:#F2F6F9;
   border:1px solid var(--line);border-radius:10px;padding:11px 12px}
-.btns{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin:12px 0 4px}
+.btns{display:grid;grid-template-columns:1.3fr 1fr;gap:8px;margin:12px 0 4px}
 button{font:inherit;font-weight:500;border-radius:10px;padding:11px 8px;cursor:pointer;
   border:1px solid var(--line);background:#fff;color:var(--ink)}
 button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -88,7 +88,7 @@ dt{color:var(--muted);font-size:.85rem}dd{margin:2px 0 0;font-size:1.6rem;font-w
     <div class="btns">
       <button class="primary" id="go">조회하기</button>
       <button id="yday">Yesterday</button>
-      <button id="today">Today</button>
+      <button id="today" hidden>Today</button>
     </div>
     <p class="msg" id="msg">데이터를 불러오는 중…</p>
 
