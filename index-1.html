@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HJ Weather AI agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#12324A;--muted:#5B7285;--line:#D3DEE6;--hot:#D9482F;--cold:#2B78BD;--rain:#2E9488;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);overflow-x:hidden;position:relative;
+  font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  background:linear-gradient(#3A82D6 0%,#7DB8EC 45%,#BEE4FA 100%) fixed}
+.sun{position:absolute;top:calc(28px + env(safe-area-inset-top,0px));right:8%;width:86px;height:86px;border-radius:50%;
+  background:#FFC93C;box-shadow:0 0 0 20px rgba(255,231,163,.7),0 0 0 44px rgba(158,208,245,.45)}
+.cloud{position:absolute;background:#fff;border-radius:60px;height:42px;opacity:.95}
+.cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.cloud::before{width:54px;height:54px;top:-27px;left:18px}
+.cloud::after{width:70px;height:70px;top:-36px;right:16px}
+.c1{width:150px;top:118px;left:50%}.c2{width:110px;top:52px;left:6%}
+.c3{width:170px;bottom:36px;left:6%;position:fixed}.c4{width:120px;bottom:70px;right:5%;position:fixed}
+main{position:relative;z-index:1;max-width:480px;margin:0 auto;
+  padding:calc(170px + env(safe-area-inset-top,0px)) 16px calc(150px + env(safe-area-inset-bottom,0px))}
+h1{color:#fff;font-size:2rem;line-height:1.15;margin:0 0 18px;text-shadow:0 2px 8px rgba(0,0,0,.15)}
+.card{background:var(--card);border-radius:18px;padding:20px;box-shadow:0 10px 28px rgba(18,50,74,.18)}
+.meta{color:var(--muted);margin:0 0 14px;font-size:.9rem}
+label{display:block;color:var(--muted);font-size:.85rem;margin:0 0 6px}
+input{width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:#F2F6F9;
+  border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+.btns{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:8px;margin:12px 0 4px}
+button{font:inherit;font-weight:500;border-radius:10px;padding:11px 8px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;color:var(--ink)}
+button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+button:disabled{opacity:.4;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--cold);outline-offset:2px}
+.msg{min-height:1.3em;font-size:.88rem;color:var(--muted);margin:8px 0 0}
+.msg.err{color:var(--hot)}
+.result{border-top:1px solid var(--line);margin-top:14px;padding-top:14px}
+.date{font-weight:700;font-size:1.15rem;margin:0 0 12px}
+dl{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0}
+dt{color:var(--muted);font-size:.85rem}dd{margin:2px 0 0;font-size:1.6rem;font-weight:700}
+.hot{color:var(--hot)}.cold{color:var(--cold)}.rain{color:var(--rain)}
+.mail{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:18px}
+.foot{color:var(--muted);font-size:.78rem;margin:14px 0 0}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 14px;background:rgba(255,255,255,.35);
+  padding:5px;border-radius:14px}
+.tabs button{border:0;background:transparent;color:#fff;font-weight:700;padding:10px 4px}
+.tabs button[aria-selected="true"]{background:#fff;color:var(--ink)}
+.day-h{font-weight:700;margin:16px 0 8px;font-size:.95rem}
+.day-h:first-child{margin-top:0}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.slot{flex:0 0 74px;text-align:center;background:#F2F6F9;border-radius:12px;padding:10px 4px}
+.slot .t{font-size:.8rem;color:var(--muted)} .slot .i{font-size:1.6rem;line-height:1.4}
+.slot .v{font-weight:700;font-size:1.1rem} .slot .p{font-size:.75rem;color:var(--cold)}
+.drow{display:grid;grid-template-columns:76px 1fr auto;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.drow:last-child{border-bottom:0}
+.drow .d b{display:block} .drow .d span{font-size:.8rem;color:var(--muted)}
+.drow .w{font-size:.85rem;color:var(--muted)} .drow .w i{font-style:normal;font-size:1.3rem;vertical-align:middle}
+.drow .tt{text-align:right;font-weight:700;white-space:nowrap}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div>
+<div class="cloud c3"></div><div class="cloud c4"></div>
+<main>
+  <h1>HJ Weather AI agent</h1>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="obs" aria-selected="true">관측</button>
+    <button role="tab" data-tab="hourly" aria-selected="false">3시간 예보</button>
+    <button role="tab" data-tab="daily" aria-selected="false">일별 예보</button>
+  </nav>
+  <section class="card" id="tab-hourly" hidden>
+    <p class="meta">청주시 흥덕구 복대동, 3시간 간격 예보</p>
+    <div id="hourlyBox"><p class="msg">예보를 불러오는 중…</p></div>
+    <p class="foot" id="hFoot">출처: 기상청 단기예보</p>
+  </section>
+  <section class="card" id="tab-daily" hidden>
+    <p class="meta">청주시 흥덕구 복대동, 일별 예보 (최대 10일)</p>
+    <div id="dailyBox"><p class="msg">예보를 불러오는 중…</p></div>
+    <p class="foot" id="dFoot">출처: 기상청 단기·중기예보</p>
+  </section>
+  <section class="card" id="tab-obs">
+    <p class="meta">청주(유) 지점, 기온/강수량</p>
+    <label for="date">날짜 (눌러서 달력에서 선택)</label>
+    <input type="date" id="date">
+    <div class="btns">
+      <button class="primary" id="go">조회하기</button>
+      <button id="yday">Yesterday</button>
+      <button id="today">Today</button>
+    </div>
+    <p class="msg" id="msg">데이터를 불러오는 중…</p>
+
+    <div class="result" id="result" hidden>
+      <p class="date" id="rdate"></p>
+      <dl>
+        <div><dt>평균기온</dt><dd id="avg"></dd></div>
+        <div><dt>최고기온</dt><dd class="hot" id="max"></dd></div>
+        <div><dt>최저기온</dt><dd class="cold" id="min"></dd></div>
+        <div><dt>일강수량</dt><dd class="rain" id="rain"></dd></div>
+      </dl>
+    </div>
+
+    <label for="to" style="margin-top:18px">받는 사람</label>
+    <div class="mail" style="margin-top:0">
+      <input id="to" type="email" value="hojae1@sk.com">
+      <button id="mail" disabled>메일 보내기</button>
+    </div>
+    <p class="foot" id="foot">출처: 기상청 ASOS 일자료</p>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let DATA = null, current = null;
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+const fmt = (v, u) => v == null ? "–" : v.toFixed(1) + u;
+
+function msg(t, err){ $("msg").textContent = t; $("msg").className = "msg" + (err ? " err" : ""); }
+
+$("date").value = daysAgo(0);
+$("date").max = daysAgo(0);
+
+fetch("data.json?v=" + Date.now())
+  .then(r => { if (!r.ok) throw 0; return r.json(); })
+  .then(j => {
+    DATA = j.days || {};
+    const keys = Object.keys(DATA);
+    if (keys.length) $("date").min = keys[0];
+    msg(keys.length ? `${keys[0]}부터 ${keys[keys.length-1]}까지 조회할 수 있어요.` : "아직 저장된 데이터가 없어요.");
+    if (j.updated) $("foot").textContent = `출처: 기상청 ASOS 일자료 | 데이터 갱신 ${j.updated.replace("T"," ").replace("Z"," UTC")}`;
+  })
+  .catch(() => msg("데이터를 불러오지 못했어요. 잠시 후 새로고침해 주세요.", true));
+
+function lookup(){
+  if (!DATA) return;
+  const d = $("date").value;
+  const v = DATA[d];
+  if (!v){
+    current = null; $("result").hidden = true; $("mail").disabled = true;
+    msg(d === daysAgo(0) ? "오늘 자료는 다음 날 낮 12시쯤 올라와요. Yesterday로 조회해 보세요." : `${d} 자료가 없어요.`, true);
+    return;
+  }
+  current = { d, ...v };
+  const [y, m, dd] = d.split("-");
+  $("rdate").textContent = `${y}년 ${+m}월 ${+dd}일`;
+  $("avg").textContent = fmt(v.avg, "℃");
+  $("max").textContent = fmt(v.max, "℃");
+  $("min").textContent = fmt(v.min, "℃");
+  $("rain").textContent = v.rain == null ? "0.0mm" : v.rain.toFixed(1) + "mm";
+  $("result").hidden = false; $("mail").disabled = false;
+  msg("");
+}
+
+$("go").onclick = lookup;
+$("yday").onclick = () => { $("date").value = daysAgo(1); };
+$("today").onclick = () => { $("date").value = daysAgo(0); };
+$("mail").onclick = () => {
+  if (!current) return;
+  const subj = `[날씨] 청주 ${current.d} 기온·강수량`;
+  const body = [`지점: 청주(유)`, `날짜: ${current.d}`, "",
+    `평균기온: ${fmt(current.avg,"℃")}`, `최고기온: ${fmt(current.max,"℃")}`,
+    `최저기온: ${fmt(current.min,"℃")}`, `일강수량: ${current.rain == null ? "0.0mm" : current.rain.toFixed(1)+"mm"}`,
+    "", "출처: 기상청 ASOS 일자료", location.href].join("\n");
+  location.href = `mailto:${encodeURIComponent($("to").value.trim())}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+};
+
+// ---- 탭 ----
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  ["obs","hourly","daily"].forEach(t => $("tab-"+t).hidden = t !== b.dataset.tab);
+});
+
+// ---- 예보 ----
+const ICON = w => !w ? "·" : /소나기|비/.test(w) && /눈/.test(w) ? "🌨️" : /눈/.test(w) ? "❄️"
+  : /소나기/.test(w) ? "🌦️" : /비|빗방울/.test(w) ? "🌧️" : /흐림/.test(w) ? "☁️" : /구름/.test(w) ? "⛅" : "☀️";
+const WD = ["일","월","화","수","목","금","토"];
+const dlabel = s => { const d = new Date(s + "T00:00:00"); return `${d.getMonth()+1}/${d.getDate()} (${WD[d.getDay()]})`; };
+const t1 = v => v == null ? "–" : Math.round(v) + "°";
+
+fetch("forecast.json?v=" + Date.now())
+  .then(r => { if (!r.ok) throw 0; return r.json(); })
+  .then(f => {
+    // 3시간 예보: 날짜별 가로 스크롤
+    const byDay = {};
+    (f.hourly || []).forEach(h => (byDay[h.date] = byDay[h.date] || []).push(h));
+    const days = Object.keys(byDay);
+    $("hourlyBox").innerHTML = days.length ? days.map(d => `
+      <p class="day-h">${dlabel(d)}</p>
+      <div class="strip">${byDay[d].map(h => `
+        <div class="slot"><div class="t">${h.time.slice(0,2)}시</div>
+          <div class="i" title="${h.wx}">${ICON(h.wx)}</div>
+          <div class="v">${t1(h.tmp)}</div>
+          <div class="p">${h.pop == null ? "" : "💧" + h.pop + "%"}</div></div>`).join("")}
+      </div>`).join("") : '<p class="msg">3시간 예보 자료가 없어요.</p>';
+    // 일별 예보
+    $("dailyBox").innerHTML = (f.daily || []).length ? f.daily.map(d => `
+      <div class="drow">
+        <div class="d"><b>${dlabel(d.date)}</b><span>${d.src}예보</span></div>
+        <div class="w"><i>${ICON(d.am)}</i> 오전 ${d.popAm ?? "–"}% &nbsp; <i>${ICON(d.pm)}</i> 오후 ${d.popPm ?? "–"}%</div>
+        <div class="tt"><span class="cold">${t1(d.min)}</span> / <span class="hot">${t1(d.max)}</span></div>
+      </div>`).join("") : '<p class="msg">일별 예보 자료가 없어요.</p>';
+    const up = `갱신 ${f.updated} (KST)`;
+    $("hFoot").textContent = `출처: 기상청 단기예보${f.shortBase ? " " + f.shortBase + " 발표" : ""} | ${up}`;
+    $("dFoot").textContent = `출처: 기상청 단기·중기예보 | ${up}`;
+  })
+  .catch(() => {
+    $("hourlyBox").innerHTML = $("dailyBox").innerHTML = '<p class="msg err">예보를 불러오지 못했어요. 잠시 후 새로고침해 주세요.</p>';
+  });
+</script>
+</body>
+</html>
