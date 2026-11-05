@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+GitHub Actions가 매일 실행하는 스크립트
+- 청주(유) ASOS 일자료를 받아 data.json에 이어서 저장합니다.
+- 인증키는 GitHub Secrets의 SERVICE_KEY에서 읽어요. (코드에 키를 넣지 마세요)
+"""
 import os
 import json
 import datetime
@@ -33,7 +38,7 @@ def fetch_range(start, end):
     with urllib.request.urlopen(req, timeout=90) as res:
         data = json.loads(res.read().decode("utf-8"))
     header = data["response"]["header"]
-    if header["resultCode"] == "03":
+    if header["resultCode"] == "03":      # 자료 없음
         return []
     if header["resultCode"] != "00":
         raise RuntimeError(header.get("resultMsg"))
@@ -49,11 +54,16 @@ def main():
         store = {"station": "청주(유)", "days": {}}
 
     days = store["days"]
-    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    # GitHub 서버는 UTC 기준이라 한국 시간(+9시간)으로 계산
+    today_kst = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date()
+    yesterday = today_kst - datetime.timedelta(days=1)
     start = START
     if days:
-        start = datetime.date.fromisoformat(max(days)) + datetime.timedelta(days=1)
+        # 늦게 공개되거나 수정된 자료를 반영하려고 최근 3일은 매번 다시 받기
+        last = datetime.date.fromisoformat(max(days))
+        start = max(START, min(last + datetime.timedelta(days=1), yesterday - datetime.timedelta(days=2)))
 
+    # 1년씩 나눠서 요청 (한 번에 최대 999건)
     cur = start
     while cur <= yesterday:
         end = min(datetime.date(cur.year, 12, 31), yesterday)
